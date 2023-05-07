@@ -66,6 +66,13 @@ void interface_draw_frame(State state) {
 			 GetScreenHeight() / 2 - 50, 20, GRAY
 		);
 	}
+	else if(info->paused){
+		DrawText(
+			"PAUSED PRESS [P] TO CONTINUE",
+			 GetScreenWidth() / 2 - MeasureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2,
+			 GetScreenHeight() / 2 - 50, 20, GRAY
+		);
+	}
 
 	EndDrawing();
 }

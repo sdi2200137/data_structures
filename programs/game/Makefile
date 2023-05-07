@@ -1,6 +1,7 @@
 # paths
 LIB = ../../lib
 INCLUDE = ../../include
+MODULES = ../../modules
 
 # compiler
 CC = gcc
@@ -10,13 +11,13 @@ CFLAGS = -Wall -Werror -g -I$(INCLUDE)
 LDFLAGS = -lm
 
 # Αρχεία .o
-OBJS = game.o state.o interface.o $(LIB)/k08.a $(LIB)/libraylib.a
+OBJS = game.o $(MODULES)/state.o $(MODULES)/interface.o $(MODULES)/set_utils.o $(LIB)/k08.a $(LIB)/libraylib.a
 
 # Το εκτελέσιμο πρόγραμμα
 EXEC = game
 
 # Παράμετροι για δοκιμαστική εκτέλεση
-ARGS =
+ARGS = 
 
 # Παράμετροι της βιβλιοθήκης raylib
 include $(LIB)/libraylib.mk

@@ -14,7 +14,7 @@ struct state {
 	Set objects;			// περιέχει στοιχεία Object (Πλατφόρμες, Αστέρια)
 	struct state_info info;	// Γενικές πληροφορίες για την κατάσταση του παιχνιδιού
 	float speed_factor;		// Πολλαπλασιαστής ταχύτητς (1 = κανονική ταχύτητα, 2 = διπλάσια, κλπ)
-	Object ball_platform    //πλατφορμα στην οποια ειναι πανω η μπαλα - πλατφορμα στην οποια αναμενεται να προσγειωθει
+	Object ball_platform;    //πλατφορμα στην οποια ειναι πανω η μπαλα - πλατφορμα στην οποια αναμενεται να προσγειωθει
 };
 
 
@@ -130,6 +130,7 @@ State state_create() {
 	);
 
 	//η μπαλα αρχιζει πανω απο την πρωτη πλατφοτμα
+	state->ball_platform = malloc(sizeof(struct object));
 	state->ball_platform = first_platform;
 
 	return state;
@@ -156,7 +157,7 @@ List state_objects(State state, float x_from, float x_to) {
     if(object != NULL){
         while (object->rect.x < x_to){
             list_insert_next(list, list_node, object) ;
-            node = set_find_node(state->objects, &object->rect.x) ;
+            node = set_find_node(state->objects, object) ;
             node = set_next(state->objects, node) ;
             if(node != SET_EOF)
                 object = set_node_value(state->objects, node) ;
@@ -165,104 +166,130 @@ List state_objects(State state, float x_from, float x_to) {
     return list ;
 }
 
-// Ενημερώνει την κατάσταση state του παιχνιδιού μετά την πάροδο 1 frame.
-// Το keys περιέχει τα πλήκτρα τα οποία ήταν πατημένα κατά το frame αυτό.
-
 void state_update(State state, KeyState keys) {
 	// Προς υλοποίηση
-	if(keys->right){
-		state->info.ball->rect.x = state->info.ball->rect.x + 6 * state->speed_factor ;
-	}
-	else if (keys->left){
-		state->info.ball->rect.x = state->info.ball->rect.x + 1 * state->speed_factor  ;
+	//Αν το παιχνίδι έχει τελειώσει και πατηθεί enter, τότε ξαναρχίζει από την αρχή.
+	if ( !state->info.playing ){
+		if(keys->enter){
+			state->info.playing = true ;
+			state_destroy(state);
+			state_create();
+		}
 	}
 	else {
-		state->info.ball->rect.x = state->info.ball->rect.x + 4 * state->speed_factor ;
-	}
-	if( state->info.ball->vert_mov == JUMPING ){
-		state->info.ball->rect.y -= state->info.ball->vert_speed * state->speed_factor ;
-		state->info.ball->vert_speed = state->info.ball->vert_speed * 85 / 100 ;
-		if(state->info.ball->vert_speed <= 0.5)
-			state->info.ball->vert_mov = FALLING ;
-	}
-	else if( state->info.ball->vert_mov ==  FALLING ){
-		state->info.ball->rect.y += state->info.ball->vert_speed * state->speed_factor;
-		state->info.ball->vert_speed *= 1.1 ;
-		if(state->info.ball->vert_speed > 7)
-			 state->info.ball->vert_speed = 7 ;
-			 //Στην state_update, ο έλεγχος των συγκρούσεων πρέπει να είναι αποδοτικός χωρίς να εξετάζει όλα τα αντικείμενα της πίστας
-			 //πιθανο χ της πλατφορμας που θα μπορουσε να βρισκεται απο πανω η μπαλα, αρχιζοντας απο το χ της μπαλας μειων το μεγιστο μηκος μιας πλατφορμας
-			 float platform_x = state->info.ball->rect.x - 250 ; 
-			 Object object = set_find_eq_or_greater(state->objects, &platform_x) ;
-			 if(object != NULL){
-				//ελεγχος μεχρι το χ του object να μην ξεπερνα το μηκος μιας πλατφορμας μετα την μπαλα 
-				while (object->rect.x <= state->info.ball->rect.x + state->info.ball->rect.width + 250){
-					if(object->type == PLATFORM) {
-						if(state->info.ball->rect.y < object->rect.y && CheckCollisionRecs(object->rect, state->info.ball->rect)) {
-		 					state->info.ball->vert_mov = IDLE ;
-							state->ball_platform = object ;
-							break;
-						}
-		 			}
-            		SetNode node = set_find_node(state->objects, &object->rect.x) ;
-            		node = set_next(state->objects, node) ;
-            		if(node != SET_EOF)
-                		object = set_node_value(state->objects, node) ;
-				}
-			 }
-	}
-	else if( state->info.ball->vert_mov ==  IDLE ) {
-		if(keys->up){
-			state->info.ball->vert_mov = JUMPING ;
-			state->info.ball->vert_speed = 17 * state->speed_factor;
-		}
-		else{
-			int is_on_platform = 0;
-			float platform_x = state->info.ball->rect.x - 250 ; 
-			Object object = set_find_eq_or_greater(state->objects, &platform_x) ;
-			if(object != NULL){
-				//ελεγχος μεχρι το χ του object να μην ξεπερνα το μηκος μιας πλατφορμας μετα την μπαλα 
-				while (object->rect.x <= state->info.ball->rect.x + state->info.ball->rect.width + 250){
-					if(object->type == PLATFORM) {
-						if(state->info.ball->rect.x >= object->rect.x && state->info.ball->rect.x <= object->rect.x + object->rect.width) {
-							state->info.ball->rect.y = state->info.ball->rect.height + object->rect.y ;
-							is_on_platform = 1 ;
-							state->ball_platform = object ;
-							break;
-						}	
-		 			}
-            		SetNode node = set_find_node(state->objects, &object->rect.x) ;
-            		node = set_next(state->objects, node) ;
-            		if(node != SET_EOF)
-                		object = set_node_value(state->objects, node) ;
-				}
-			 }
-			if(!is_on_platform){
-				state->info.ball->vert_mov =  FALLING ; 
-				state->info.ball->vert_speed = 1.5 ;
+		if(keys->p){
+			if(state->info.paused == false){
+				state->info.paused = true;
+			}
+			else{
+				state->info.paused = false ;
 			}
 		}
-	}
-
-	Object last_platform = NULL ;
-	Object temp = set_find_eq_or_greater(state->objects, &state->info.ball->rect.x) ;
-	while(temp->type == PLATFORM){
-		last_platform = temp;
-    	SetNode node = set_find_node(state->objects, &temp->rect.x) ;
-		node = set_next(state->objects, node) ;
-    	if(node != SET_EOF)
-       		temp = set_node_value(state->objects, node) ;
-	}
+		if(!state->info.paused || keys->n)  {
+			if(keys->right){
+				state->info.ball->rect.x = state->info.ball->rect.x + 6 * state->speed_factor ;
+			}
+			else if (keys->left){
+				state->info.ball->rect.x = state->info.ball->rect.x + 1 * state->speed_factor  ;
+			}
+			else {
+				state->info.ball->rect.x = state->info.ball->rect.x + 4 * state->speed_factor ;
+			}
+			if( state->info.ball->vert_mov == JUMPING ){
+				state->info.ball->rect.y -= state->info.ball->vert_speed * state->speed_factor ;
+				state->info.ball->vert_speed = state->info.ball->vert_speed * 85 / 100 ;
+				if(state->info.ball->vert_speed <= 0.5)
+					state->info.ball->vert_mov = FALLING ;
+			}
+			else if( state->info.ball->vert_mov ==  FALLING ){
+				state->info.ball->rect.y += state->info.ball->vert_speed * state->speed_factor;
+				state->info.ball->vert_speed *= 1.1 ;
+				if(state->info.ball->vert_speed > 7)
+					state->info.ball->vert_speed = 7 ;
+				//Στην state_update, ο έλεγχος των συγκρούσεων πρέπει να είναι αποδοτικός χωρίς να εξετάζει όλα τα αντικείμενα της πίστας
+				//πιθανο χ της πλατφορμας που θα μπορουσε να βρισκεται απο πανω η μπαλα, αρχιζοντας απο το χ της μπαλας μειων το μεγιστο μηκος μιας πλατφορμας
+				float platform_x = state->info.ball->rect.x - 250 ; 
+				Object object = set_find_eq_or_greater(state->objects, &platform_x) ;
+				if(object != NULL){
+					//ελεγχος μεχρι το χ του object να μην ξεπερνα το μηκος μιας πλατφορμας μετα την μπαλα 
+					while (object->rect.x <= state->info.ball->rect.x + state->info.ball->rect.width + 250){
+						if(object->type == PLATFORM) {
+							if(state->info.ball->rect.y + state->info.ball->rect.height  < object->rect.y + object->rect.height
+							   && CheckCollisionRecs(object->rect, state->info.ball->rect)){
+								if(object->unstable)
+									object->vert_mov = FALLING;
+								state->info.ball->rect.y = object->rect.y - state->info.ball->rect.height ;
+								state->info.ball->vert_mov = IDLE ;
+								state->ball_platform = object ;
+								break;
+							}
+						}
+						SetNode node = set_find_node(state->objects, object) ;
+						node = set_next(state->objects, node) ;
+						if(node != SET_EOF)
+							object = set_node_value(state->objects, node) ;
+					}
+				}
+			}
+			else if( state->info.ball->vert_mov ==  IDLE ) {
+				if(keys->up){
+					state->info.ball->vert_mov = JUMPING ;
+					state->info.ball->vert_speed = 17 * state->speed_factor;
+				}
+				else{
+					int is_on_platform = 0;
+                    float platform_x = state->info.ball->rect.x - 250 ; 
+					Object object = set_find_eq_or_greater(state->objects, &platform_x) ;
+					if(object != NULL){
+						//ελεγχος μεχρι το χ του object να μην ξεπερνα το μηκος μιας πλατφορμας μετα την μπαλα 
+						while (object->rect.x <= state->info.ball->rect.x + state->info.ball->rect.width + 250){
+							if(object->type == PLATFORM) {
+								if((state->info.ball->rect.x >= object->rect.x) && (state->info.ball->rect.x <= object->rect.x + object->rect.width)) {
+									state->info.ball->rect.y = object->rect.y - state->info.ball->rect.height ;
+									is_on_platform = 1 ;
+									state->ball_platform = object ;
+									break;
+								}	
+							}
+							SetNode node = set_find_node(state->objects, object) ;
+							node = set_next(state->objects, node) ;
+							if(node != SET_EOF)
+								object = set_node_value(state->objects, node) ;
+						}
+					}
+					if(!is_on_platform){
+						state->info.ball->vert_mov =  FALLING ; 
+						state->info.ball->vert_speed = 1.5 * state->speed_factor;
+					}
+				}
+			}
+			Object last_platform = NULL ;
+            SetNode node = set_first(state->objects);
+            while(node != SET_EOF){
+                Object temp = set_node_value(state->objects, node);
+                if(temp->type == PLATFORM)
+                    last_platform = temp;
+                node = set_next(state->objects, node);
+            }
+            // Object temp = set_find_eq_or_greater(state->objects, &state->info.ball->rect.x) ;
+			// while(temp->type == PLATFORM){
+			// 	last_platform = temp;
+			// 	SetNode node = set_find_node(state->objects, temp) ;
+			// 	node = set_next(state->objects, node) ;
+			// 	if(node != SET_EOF){
+			// 		temp = set_node_value(state->objects, node) ;
+            //     }
+			// }
 			//ενημερωση των αντικειμενων μεχρι μια οθονη πισω και μια οθονη μπροστα απο την μπαλα
 			float object_x = state->info.ball->rect.x - SCREEN_WIDTH ; 
 			Object object = set_find_eq_or_greater(state->objects, &object_x) ;
 			while (object->rect.x <= state->info.ball->rect.x + state->info.ball->rect.width + SCREEN_WIDTH){
 				//τιμη που θα αφαιρεθει απο το set
-				Pointer tbr = NULL ;
+				//Object tbr = NULL ;
 				if( object->type == PLATFORM ){
 					if( object->vert_mov == MOVING_UP){
 						object->rect.y -= object->vert_mov * state->speed_factor ;
-						if( object->rect.y > (SCREEN_HEIGHT/4) )
+						if( object->rect.y < (SCREEN_HEIGHT/4) )
 							object->vert_mov = MOVING_DOWN ;
 					}
 					else if( object->vert_mov == MOVING_DOWN) {
@@ -271,42 +298,41 @@ void state_update(State state, KeyState keys) {
 							object->vert_mov = MOVING_UP ;
 					}
 					else if( object->vert_mov == FALLING) {
-						object->rect.y -= 4 * state->speed_factor;
+						object->rect.y += 4 * state->speed_factor;
 						if(object->rect.y == SCREEN_HEIGHT){
-							tbr = &object->rect.x ;	
+							//tbr = object ;	
 						}
 					}
 				}
 				else if(object->type == STAR){
 					if(CheckCollisionRecs(object->rect, state->info.ball->rect)){
 						state->info.score += 10;
-						tbr = &object->rect.x ;
+						//tbr = object ;
 					}
 				}
-           		SetNode node = set_find_node(state->objects, &object->rect.x) ;
-            	node = set_next(state->objects, node) ;
-            	if(node != SET_EOF)
-            		object = set_node_value(state->objects, node) ;
-				set_remove(state->objects, tbr) ;
+				// &object->rect.x
+				SetNode node = set_find_node(state->objects, object) ;
+				node = set_next(state->objects, node) ;
+				if(node != SET_EOF) {
+					object = set_node_value(state->objects, node) ;
+                   // Object temp = set_find(state->objects, tbr);
+					//set_remove(state->objects, tbr) ;
+				}
 			}
-	if ( !state->info.playing ){
-		if(keys->enter)
-			state->info.playing = true ;
-	}
-	else {
-		if(keys->p)
-			state->info.paused = true;
-		if ( state->info.paused ){
-			if(keys->n){}
+			if(state->info.ball->rect.y >= SCREEN_HEIGHT){
+				state->info.playing = false ;
+			}
+			if(last_platform->rect.x - (state->info.ball->rect.x + state->info.ball->rect.width) <= SCREEN_WIDTH ){
+				add_objects(state, last_platform->rect.x + last_platform->rect.width) ;
+				state->speed_factor = state->speed_factor * 1.1 ;
+			}
 		}
-
-
 	}
-	if(state->info.ball->rect.y == SCREEN_HEIGHT)
-		state->info.playing = false ;
-	if(state->info.ball->rect.x + state->info.ball->rect.width >= last_platform->rect.x - SCREEN_WIDTH ){
-		add_objects(state, last_platform->rect.x + last_platform->rect.width) ;
-		state->speed_factor = state->speed_factor * 1.1 ;
-	}
-	
+}
+
+// Καταστρέφει την κατάσταση state ελευθερώνοντας τη δεσμευμένη μνήμη.
+
+void state_destroy(State state) {
+	// Προς υλοποίηση
+	free(state);
 }

@@ -153,7 +153,15 @@ void state_update(State state, KeyState keys) {
 	}
 	else {
 		//Αν πατηθεί P το παιχνίδι μπαίνει σε pause και δεν ενημερώνεται πλέον.
-		if(state->info.paused == false)  {
+		if(keys->p){
+			if(state->info.paused == false){
+				state->info.paused = true;
+			}
+			else{
+				state->info.paused = false ;
+			}
+		}
+		if(!state->info.paused || keys->n)  {
 			//Οριζόντια κίνηση μπάλας
 			if(keys->right){
 				//μετακινείται 6 pixels προς τα δεξιά σε κάθε frame αν ειναι πατημενο το δεξι βελος
@@ -277,7 +285,6 @@ void state_update(State state, KeyState keys) {
 						//από το vector των αντικειμένων και προστίθενται 10 πόντοι στο σκορ.
 						if(CheckCollisionRecs(object->rect, state->info.ball->rect )){
 							state->info.score += 10;
-							// = vector_node_value(state->objects,vector_last(state->objects)) ;
 							vector_insert_last(state->objects, object) ;
 							vector_remove_last(state->objects) ;
 						}
@@ -295,14 +302,6 @@ void state_update(State state, KeyState keys) {
 				//Επίσης η ταχύτητα του παιχνιδιού γίνεται 10% μεγαλύτερη
 				//Αυτό επιτυγχάνεται αυξάνοντας το speed_factor και φροντίζοντας όλες οι μετακινήσεις να λαμβάνουν υπόψη το speed_facto
 				state->speed_factor = state->speed_factor * 1.1 ;
-			}
-		}
-		if(keys->p){
-			if(state->info.paused == false){
-				state->info.paused = true;
-			}
-			else{
-				state->info.paused = false ;
 			}
 		}
 	}
